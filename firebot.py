@@ -17,6 +17,9 @@ terms = [
     "#claddingscandal"
 ]
 
+# How long the script should pause for after doing a like or retweet
+SECONDS_BETWEEN_ACTIONS = 15
+
 # Allows set up of multiple loggers. We use this so we can keep debug logs elsewhere
 # https://stackoverflow.com/questions/11232230/logging-to-two-files-with-different-settings
 def setup_logger(name, log_file, level=logging.INFO):
@@ -61,7 +64,8 @@ class Tweet:
 retweet_count = 0
 favorite_count = 0
 
-def favourite(tweet):
+
+def like(tweet):
     global favorite_count
     # Check if I've already liked this before sending to avoid API error
     fav = api.GetStatus(status_id=tweet.id)
@@ -69,8 +73,12 @@ def favourite(tweet):
         logger.info(f"Liking {tweet.url}")
         api.CreateFavorite(status_id=tweet.id)
         favorite_count = favorite_count + 1
+        # With a free account you might hit the Twitter rate limit
+        # which the client doesn't handle well, so take it easy...
+        time.sleep(SECONDS_BETWEEN_ACTIONS)
     else:
         logger.info(f"Status [{tweet.url}] already liked")
+
 
 def retweet(tweet):
     global retweet_count
@@ -80,6 +88,9 @@ def retweet(tweet):
         logger.info(f"Retweeting {tweet.url}")
         api.PostRetweet(status_id=tweet.id)
         retweet_count = retweet_count + 1
+        # With a free account you might hit the Twitter rate limit
+        # which the client doesn't handle well, so take it easy...
+        time.sleep(SECONDS_BETWEEN_ACTIONS)
     else:
         logger.info(f"Status [{tweet.url}] already retweeted")
 
@@ -97,12 +108,12 @@ while (True):
 
         for tweet in stream:
             try:
-                tweet_logger.debug(tweet)
+                # tweet_logger.debug(tweet)
                 t = Tweet(tweet)
                 logger.info(f"Found {t.type} [{t.id}]")
 
                 if not t.is_favorited:
-                    favourite(t)
+                    like(t)
 
                 if t.type == 'status' and not t.is_retweeted:
                     retweet(t)
@@ -117,10 +128,6 @@ while (True):
                 logger.error(f"Something went wrong with Tweet {tweet['id']}", e)
 
             logger.info(f"Progress: {favorite_count} likes and {retweet_count} retweets")
-
-            # With a free account you might hit the Twitter rate limit
-            # which the client doesn't handle well, so take it easy...
-            time.sleep(60)
 
     except Exception as e:
         logger.error(f"Something went wrong with the twitter stream. Hopefully this will just restart {e}")
