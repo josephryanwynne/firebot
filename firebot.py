@@ -17,8 +17,14 @@ terms = [
     "#claddingscandal"
 ]
 
-# How long the script should pause for after doing a like or retweet
+# How long the script should pause for after doing a like or retweet.
 SECONDS_BETWEEN_ACTIONS = 15
+
+# How long to pause for when the API stops allowing write requests do to rate limit
+# This is something of an assumption based on parsing the returned error because the twitter client doesn't
+# handle HTTP 429 Too Many Requests properly.
+RATE_LIMIT_HIT_SLEEP_TIME_MINUTES = 30
+
 
 # Allows set up of multiple loggers. We use this so we can keep debug logs elsewhere
 # https://stackoverflow.com/questions/11232230/logging-to-two-files-with-different-settings
@@ -120,8 +126,8 @@ while (True):
 
             except TwitterError as e:
                 if e.message == {'Unknown error': ''}:
-                    logger.error(f"Looks like you might have hit your rate limit. Pausing for 15 minutes...")
-                    time.sleep(900)
+                    logger.error(f"Looks like you might have hit your rate limit. Pausing for {RATE_LIMIT_HIT_SLEEP_TIME_MINUTES} minutes...")
+                    time.sleep(RATE_LIMIT_HIT_SLEEP_TIME_MINUTES * 60)
                 else:
                     logger.error(f"Something wrong with twitter... {tweet['id']}", e)
             except Exception as e:
